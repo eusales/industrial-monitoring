@@ -14,6 +14,18 @@ Supervisório web para **simulação de monitoramento industrial**, desenvolvido
 
 As capturas mostram a aplicação em execução. Os valores variam a cada atualização porque são gerados por simulação.
 
+### Demonstração da integração com Telegram
+
+![Supervisório em execução com KPIs, média móvel e confirmação de mensagem enviada ao Telegram](docs/images/painel-integracao-telegram.png)
+
+![Histórico do supervisório e registros de alarmes de produção e pressão](docs/images/historico-integracao-telegram.png)
+
+<p align="center">
+  <img src="docs/images/alertas-telegram.jpeg" alt="Exemplo de conversa com um bot recebendo testes de conexão e alertas industriais no Telegram" width="360">
+</p>
+
+As fotos ilustram uma execução de demonstração com Telegram. O nome do bot exibido é apenas uma referência visual: crie seu próprio bot e configure seu próprio destino. Nenhum token ou identificador real é necessário nos exemplos abaixo. Alguns elementos das capturas, como o botão de teste, pertencem à versão usada na demonstração e podem diferir do código publicado.
+
 ## Funcionalidades
 
 - KPIs de temperatura (°C), pressão (bar), corrente (A), tensão (V), produção (pç/h) e status da máquina.
@@ -34,6 +46,13 @@ As capturas mostram a aplicação em execução. Os valores variam a cada atuali
 
 ## Executar localmente
 
+Pré-requisitos: Python, Git e acesso à internet para instalar as dependências. No PowerShell, clone o projeto:
+
+```powershell
+git clone https://github.com/eusales/industrial-monitoring.git
+cd industrial-monitoring
+```
+
 Na pasta do repositório, crie um ambiente virtual e instale as dependências:
 
 ```powershell
@@ -50,6 +69,64 @@ Inicie o painel:
 ```
 
 Acesse o endereço informado no terminal, normalmente `http://localhost:8501`. Use a barra lateral para ajustar a atualização e a média móvel. Aguarde a quantidade de amostras selecionada para visualizar a média móvel e avaliar os alarmes.
+
+## Executar com notificações no Telegram (exemplo genérico)
+
+### 1. Criar seu bot e iniciar a conversa
+
+No Telegram, abra o [BotFather](https://t.me/BotFather), envie `/newbot` e siga as instruções. Guarde o token recebido somente no seu ambiente local. Abra a conversa com o bot criado e envie `/start`. Consulte o [tutorial oficial do Telegram](https://core.telegram.org/bots/tutorial).
+
+### 2. Definir as variáveis de ambiente
+
+No mesmo PowerShell que será usado para executar a aplicação, configure seus valores. Os textos abaixo são marcadores fictícios; substitua-os localmente:
+
+```powershell
+$env:TELEGRAM_BOT_TOKEN = "SEU_TOKEN_DO_BOT"
+$env:TELEGRAM_CHAT_ID = "SEU_CHAT_ID"
+```
+
+Para descobrir o ID de uma conversa privada, após enviar `/start` ao seu bot, defina o token acima e consulte as atualizações:
+
+```powershell
+$updates = Invoke-RestMethod -Uri "https://api.telegram.org/bot$($env:TELEGRAM_BOT_TOKEN)/getUpdates"
+$updates.result | ForEach-Object { $_.message.chat } | Select-Object id, type
+```
+
+Copie o `id` da sua conversa para `TELEGRAM_CHAT_ID`. Se não houver resultados, envie uma nova mensagem ao bot e repita a consulta. O método `getUpdates` não funciona enquanto houver um webhook configurado; use um bot dedicado para este exemplo. Referência: [getUpdates na Bot API](https://core.telegram.org/bots/api#getupdates).
+
+As variáveis definidas com `$env:` valem para o terminal atual e os processos iniciados nele. O projeto lê o ambiente com `os.getenv`; criar um arquivo `.env` sozinho não carrega essas variáveis.
+
+### 3. Testar a conexão
+
+Com as dependências instaladas, envie uma mensagem de teste ao destino que você configurou:
+
+```powershell
+$body = @{
+    chat_id = $env:TELEGRAM_CHAT_ID
+    text = "Teste do Industrial Monitoring: integração com Telegram funcionando."
+}
+$response = Invoke-RestMethod -Method Post -Uri "https://api.telegram.org/bot$($env:TELEGRAM_BOT_TOKEN)/sendMessage" -Body $body
+$response.ok
+```
+
+O resultado esperado é `True`, com a mensagem aparecendo na conversa. Esse teste usa a [API sendMessage](https://core.telegram.org/bots/api#sendmessage) diretamente e não depende de existir um botão de teste na interface.
+
+### 4. Iniciar o supervisório
+
+No mesmo terminal:
+
+```powershell
+.\.venv\Scripts\python.exe -m streamlit run app.py
+```
+
+Ajuste a janela da média móvel e aguarde a quantidade necessária de amostras. Quando a média de uma variável passar para alerta ou crítico, a aplicação registra o evento e tenta enviar a notificação. Exemplo ilustrativo:
+
+```text
+⚠ ALERTA ALERTA: pressao = 6.05
+⚠ ALERTA CRITICO: temperatura = 82.4
+```
+
+Os valores são simulados, portanto os alarmes não aparecem em horários fixos. O intervalo mínimo configurado entre notificações iguais é de 60 segundos; o registro depende também da mudança de estado da variável. Sem as variáveis do Telegram, o painel continua funcionando e ignora esse envio. Mantenha tokens reais fora do README, de capturas e dos commits.
 
 ## Estrutura do repositório
 
