@@ -1,4 +1,8 @@
 import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 # ===== Limites de variáveis industriais =====
 LIMITES = {
@@ -23,7 +27,8 @@ CENARIOS = ["Normal", "Alerta", "Critico"]
 NOTIFICACOES = {
     "telegram": {
         "token": os.getenv("TELEGRAM_BOT_TOKEN", ""),
-        "chat_id": os.getenv("TELEGRAM_CHAT_ID", "")
+        "chat_id": os.getenv("TELEGRAM_CHAT_ID", ""),
+        "ativo": os.getenv("TELEGRAM_ENABLED", "false").lower() == "true"
     },
     "email": {
         "ativo": False,

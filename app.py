@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 import time
 from data.simulated_data import gerar_dados
 from config.settings import LIMITES, DASHBOARD
-from notifications import notificar_alerta
+from notifications import notificar_alerta, enviar_telegram
 
 # =========================
 # Configuração da página
@@ -21,6 +21,12 @@ st.title("Dashboard de Monitoramento Industrial")
 # Sidebar - Controles
 # =========================
 st.sidebar.header("Configurações")
+if st.sidebar.button("Testar Telegram"):
+    sucesso, detalhe = enviar_telegram("Teste do Industrial Monitoring: integração com Telegram funcionando.")
+    if sucesso:
+        st.sidebar.success(detalhe)
+    else:
+        st.sidebar.error(detalhe)
 taxa_atualizacao = st.sidebar.slider("Taxa de atualização (segundos)", 1, 10, DASHBOARD["taxa_atualizacao_padrao"])
 janela_mm = st.sidebar.slider("Janela da média móvel (amostras)", 3, 20, DASHBOARD["janela_mm_padrao"])
 
@@ -135,9 +141,20 @@ for var in ["temperatura", "pressao", "corrente", "tensao", "producao"]:
 
         if nivel_atual != "NORMAL":
             registrar_evento(var, valor_atual, nivel_atual)
-            notificar_alerta(var, valor_atual, nivel_atual)
 
         st.session_state.estado_variaveis[var] = nivel_atual
+
+    if nivel_atual != "NORMAL":
+        sucesso, detalhe = notificar_alerta(var, round(valor_atual, 2), nivel_atual)
+        if sucesso is not None:
+            st.session_state["ultimo_envio_telegram"] = (sucesso, detalhe)
+
+if "ultimo_envio_telegram" in st.session_state:
+    sucesso, detalhe = st.session_state["ultimo_envio_telegram"]
+    if sucesso:
+        st.sidebar.success(detalhe)
+    else:
+        st.sidebar.error(detalhe)
 
 
 # =========================

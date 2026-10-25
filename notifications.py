@@ -6,19 +6,27 @@ from config.settings import NOTIFICACOES
 
 # Histórico de últimos alertas para evitar spam
 ultimo_alerta = {}
+ultima_tentativa = {}
 
 # -------- Função Telegram --------
 def enviar_telegram(mensagem):
+    if not NOTIFICACOES["telegram"].get("ativo", False):
+        return False, "Telegram desativado no .env."
     token = NOTIFICACOES["telegram"]["token"]
     chat_id = NOTIFICACOES["telegram"]["chat_id"]
     if not token or not chat_id:
-        return
+        return False, "Preencha TELEGRAM_BOT_TOKEN e TELEGRAM_CHAT_ID no .env."
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     payload = {"chat_id": chat_id, "text": mensagem}
     try:
-        requests.post(url, data=payload)
-    except Exception as e:
-        print("Erro ao enviar Telegram:", e)
+        resposta = requests.post(url, data=payload, timeout=(3, 5))
+        if resposta.status_code != 200:
+            return False, f"Telegram recusou o envio (HTTP {resposta.status_code}). Verifique token, chat e /start."
+        if not resposta.json().get("ok"):
+            return False, "Telegram não confirmou o envio."
+        return True, "Mensagem enviada ao Telegram."
+    except (requests.RequestException, ValueError):
+        return False, "Falha de conexão ou resposta inválida do Telegram."
 
 # -------- Função Email --------
 def enviar_email(mensagem):
@@ -57,11 +65,18 @@ def notificar_alerta(variavel, valor, nivel):
 
     # Verifica intervalo mínimo entre alertas iguais
     if chave in ultimo_alerta and (agora - ultimo_alerta[chave]) < NOTIFICACOES["min_interval_segundos"]:
-        return
+        return None, "Aguardando intervalo entre alertas."
+    if chave in ultima_tentativa and agora - ultima_tentativa[chave] < 10:
+        return None, "Aguardando nova tentativa."
+    ultima_tentativa[chave] = agora
 
     mensagem = f"⚠ ALERTA {nivel}: {variavel} = {valor}"
     registrar_log(variavel, valor, nivel)
-    enviar_telegram(mensagem)
+    sucesso, detalhe = enviar_telegram(mensagem)
     enviar_email(mensagem)
 
-    ultimo_alerta[chave] = agora
+    if sucesso:
+        ultimo_alerta[chave] = agora
+    with open(NOTIFICACOES["log_file"], "a", encoding="utf-8") as arquivo:
+        arquivo.write(f"{datetime.now()} | TELEGRAM | {sucesso} | {detalhe}\n")
+    return sucesso, detalhe

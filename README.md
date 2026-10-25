@@ -165,3 +165,15 @@ Os alarmes atuais verificam se a média móvel ultrapassa os limites superiores,
 - Revogar as credenciais usadas em versões locais anteriores. Esta publicação começa com histórico novo e configuração por variáveis de ambiente.
 - Manter caches Python, logs e credenciais locais fora do versionamento, conforme o `.gitignore`.
 - Consolidar uma versão de Python e fixar versões de dependências após validar o ambiente escolhido. O `requirements.txt` lista as dependências diretas sem fixar versões.
+
+## Alertas no Telegram
+
+1. No Telegram, abra @BotFather e use /newbot (ou selecione seu bot existente).
+2. Copie `.env.example` para `.env` se ainda não houver um arquivo local.
+3. Preencha `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID`; defina `TELEGRAM_ENABLED=true`.
+4. Abra a conversa com seu bot e envie `/start`. Para grupos, adicione o bot ao grupo e configure o ID do grupo.
+5. Execute `.venv\Scripts\python.exe -m streamlit run app.py` e clique em **Testar Telegram** na barra lateral.
+
+O dashboard precisa estar aberto para gerar dados e alertas. Os alertas usam a média móvel e são enviados enquanto o nível for ALERTA ou CRITICO, respeitando o intervalo por variável e nível definido em `config/settings.py`. Falhas de envio permitem uma nova tentativa após 10 segundos e aparecem na barra lateral.
+
+Não publique o `.env`. Se um token já foi publicado, gere outro no BotFather e atualize o arquivo local. API: https://core.telegram.org/bots/api#sendmessage
