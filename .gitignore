@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.python/
+.uv-cache/
+.pytest_cache/
+
+# Configurações locais e credenciais
+.env
+.env.*
+!.env.example
+.streamlit/secrets.toml
+
+# Arquivos gerados
+logs/
+*.log
+
+# Editores e sistema operacional
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
